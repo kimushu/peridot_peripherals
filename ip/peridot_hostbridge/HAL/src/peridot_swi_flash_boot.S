@@ -158,7 +158,11 @@ __loader:
 #endif
 
 	/* Get register base */
+#ifdef __PERIDOT_HOSTBRIDGE
+	MOVI32	r_spim_base, (PERIDOT_HOSTBRIDGE_BASE + PERIDOT_SWI_FLASH_REG * 4)
+#else
 	MOVI32	r_spim_base, (SWI_BASE + PERIDOT_SWI_FLASH_REG * 4)
+#endif
 
 	/* Calculate function pointers */
 	nextpc	r_temp
