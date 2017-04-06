@@ -31,10 +31,14 @@ extern void peridot_swi_init(peridot_swi_state *sp,
     name##_IRQ                              \
   )
 
+extern int peridot_swi_set_led(alt_u32 value);
+extern int peridot_swi_get_led(alt_u32 *ptr);
+
+extern int peridot_swi_reset_cpu(void);
+
 extern int peridot_swi_set_handler(void (*isr)(void *), void *param);
 
 extern int peridot_swi_write_message(alt_u32 value);
-
 extern int peridot_swi_read_message(alt_u32 *value);
 
 #define PERIDOT_SWI_FLASH_COMMAND_MERGE (0x01)

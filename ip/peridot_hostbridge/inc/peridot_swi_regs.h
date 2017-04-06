@@ -4,6 +4,7 @@
 #ifndef __ASSEMBLER__
 #include <io.h>
 #endif
+#include "system.h"
 
 /* CLASSID register (compatible with altera_avalon_sysid_qsys) */
 #define PERIDOT_SWI_CLASSID_REG             0
@@ -39,17 +40,44 @@
   IORD(base, PERIDOT_SWI_RSTSTS_REG)
 #define IOWR_PERIDOT_SWI_RSTSTS(base, data) \
   IOWR(base, PERIDOT_SWI_RSTSTS_REG, data)
+#ifdef __PERIDOT_HOSTBRIDGE
+#define PERIDOT_SWI_RSTSTS_LED_MSK          (0xf)
+#define PERIDOT_SWI_RSTSTS_LED_OFST         (0)
+#define PERIDOT_SWI_RSTSTS_LED_WIDTH        (4)
+#define PERIDOT_SWI_RSTSTS_RST_MSK          (0x100)
+#define PERIDOT_SWI_RSTSTS_RST_OFST         (8)
+#define PERIDOT_SWI_RSTSTS_BOOTIMG_MSK      (0x800)
+#define PERIDOT_SWI_RSTSTS_BOOTIMG_OFST     (11)
+#define PERIDOT_SWI_RSTSTS_SWIENA_MSK       (0x1000)
+#define PERIDOT_SWI_RSTSTS_SWIENA_OFST      (12)
+#define PERIDOT_SWI_HAS_MSGSWI(base) \
+  (IORD_PERIDOT_SWI_RSTSTS(base) & PERIDOT_SWI_RSTSTS_SWIENA_MSK)
+#define PERIDOT_SWI_RSTSTS_FLAENA_MSK       (0x2000)
+#define PERIDOT_SWI_RSTSTS_FLAENA_OFST      (13)
+#define PERIDOT_SWI_HAS_FLASH(base) \
+  (IORD_PERIDOT_SWI_RSTSTS(base) & PERIDOT_SWI_RSTSTS_FLAENA_MSK)
+#else
 #define PERIDOT_SWI_RSTSTS_RST_MSK          (0x1)
 #define PERIDOT_SWI_RSTSTS_RST_OFST         (0)
 #define PERIDOT_SWI_RSTSTS_LED_MSK          (0x2)
 #define PERIDOT_SWI_RSTSTS_LED_OFST         (1)
+#define PERIDOT_SWI_RSTSTS_LED_WIDTH        (1)
+#define PERIDOT_SWI_HAS_MSGSWI(base)        (1)
+#define PERIDOT_SWI_HAS_FLASH(base)         (1)
+#endif
 #define PERIDOT_SWI_RSTSTS_UIDENA_MSK       (0x4000)
 #define PERIDOT_SWI_RSTSTS_UIDENA_OFST      (14)
+#define PERIDOT_SWI_HAS_UID(base) \
+  (IORD_PERIDOT_SWI_RSTSTS(base) & PERIDOT_SWI_RSTSTS_UIDENA_MSK)
 #define PERIDOT_SWI_RSTSTS_UIDVALID_MSK     (0x8000)
 #define PERIDOT_SWI_RSTSTS_UIDVALID_OFST    (15)
 #define PERIDOT_SWI_RSTSTS_KEY_MSK          (0xffff0000u)
 #define PERIDOT_SWI_RSTSTS_KEY_OFST         (16)
+#ifdef __PERIDOT_HOSTBRIDGE
+#define PERIDOT_SWI_RSTSTS_KEY_VAL          ((PERIDOT_HOSTBRIDGE_CPURESET_KEY)<<16)
+#else
 #define PERIDOT_SWI_RSTSTS_KEY_VAL          (0xdead0000u)
+#endif
 
 /* FLASH register */
 #define PERIDOT_SWI_FLASH_REG               5

@@ -35,6 +35,10 @@ void peridot_swi_init(peridot_swi_state *sp,
 {
   swi_sp = sp;
 
+  if (!PERIDOT_SWI_HAS_MSGSWI(swi_sp->base)) {
+    return;
+  }
+
 #ifdef ALT_ENHANCED_INTERRUPT_API_PRESENT
   alt_ic_isr_register(irq_controller_id, irq, peridot_swi_irq, sp, NULL);
 #else
@@ -43,11 +47,56 @@ void peridot_swi_init(peridot_swi_state *sp,
 #endif
 }
 
+int peridot_swi_set_led(alt_u32 value)
+{
+  if (!swi_sp)
+  {
+    return -ENODEV;
+  }
+
+  IOWR_PERIDOT_SWI_RSTSTS(swi_sp->base,
+      (value << PERIDOT_SWI_RSTSTS_LED_OFST) & PERIDOT_SWI_RSTSTS_LED_MSK);
+  return 0;
+}
+
+int peridot_swi_get_led(alt_u32 *ptr)
+{
+  if (!swi_sp)
+  {
+    return -ENODEV;
+  }
+
+  if (ptr) {
+    *ptr = (IORD_PERIDOT_SWI_RSTSTS(swi_sp->base) & PERIDOT_SWI_RSTSTS_LED_MSK)
+        >> PERIDOT_SWI_RSTSTS_LED_OFST;
+  }
+
+  return PERIDOT_SWI_RSTSTS_LED_WIDTH;
+}
+
+__attribute__((noreturn)) int peridot_swi_reset_cpu(void)
+{
+  if (!swi_sp)
+  {
+    return -ENODEV;
+  }
+
+  IOWR_PERIDOT_SWI_RSTSTS(swi_sp->base,
+      PERIDOT_SWI_RSTSTS_KEY_VAL | PERIDOT_SWI_RSTSTS_RST_MSK);
+
+  // Never return
+  for (;;);
+}
+
 int peridot_swi_set_handler(void (*isr)(void *), void *param)
 {
   if (!swi_sp)
   {
     return -ENODEV;
+  }
+
+  if (!PERIDOT_SWI_HAS_MSGSWI(swi_sp->base)) {
+    return -ENOTSUP;
   }
 
   swi_sp->isr = NULL;
@@ -58,23 +107,37 @@ int peridot_swi_set_handler(void (*isr)(void *), void *param)
 
 int peridot_swi_write_message(alt_u32 value)
 {
+  alt_u32 base;
+
   if (!swi_sp)
   {
     return -ENODEV;
   }
 
-  IOWR_PERIDOT_SWI_MESSAGE(swi_sp->base, value);
+  base = swi_sp->base;
+  if (!PERIDOT_SWI_HAS_MSGSWI(base)) {
+    return -ENOTSUP;
+  }
+
+  IOWR_PERIDOT_SWI_MESSAGE(base, value);
   return 0;
 }
 
 int peridot_swi_read_message(alt_u32 *value)
 {
+  alt_u32 base;
+
   if (!swi_sp)
   {
     return -ENODEV;
   }
 
-  *value = IORD_PERIDOT_SWI_MESSAGE(swi_sp->base);
+  base = swi_sp->base;
+  if (!PERIDOT_SWI_HAS_MSGSWI(base)) {
+    return -ENOTSUP;
+  }
+
+  *value = IORD_PERIDOT_SWI_MESSAGE(base);
   return 0;
 }
 
@@ -91,6 +154,9 @@ int peridot_swi_flash_command(alt_u32 write_length, const alt_u8 *write_data,
   }
 
   base = swi_sp->base;
+  if (!PERIDOT_SWI_HAS_FLASH(base)) {
+    return -ENOTSUP;
+  }
 
   while ((IORD_PERIDOT_SWI_FLASH(base) &
           PERIDOT_SWI_FLASH_RDY_MSK) == 0);
