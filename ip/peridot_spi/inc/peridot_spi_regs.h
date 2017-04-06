@@ -1,0 +1,42 @@
+#ifndef __PERIDOT_SPI_REGS_H__
+#define __PERIDOT_SPI_REGS_H__
+
+#include <io.h>
+
+/* SPI access register */
+#define PERIDOT_SPI_ACCESS_REG              0
+#define IOADDR_PERIDOT_SPI_ACCESS(base) \
+  __IO_CALC_ADDRESS_NATIVE(base, PERIDOT_SPI_ACCESS_REG)
+#define IORD_PERIDOT_SPI_ACCESS(base)\
+  IORD(base, PERIDOT_SPI_ACCESS_REG)
+#define IOWR_PERIDOT_SPI_ACCESS(base, data) \
+  IOWR(base, PERIDOT_SPI_ACCESS_REG, data)
+#define PERIDOT_SPI_ACCESS_RXDATA_MSK       (0xff)
+#define PERIDOT_SPI_ACCESS_RXDATA_OFST      (0)
+#define PERIDOT_SPI_ACCESS_TXDATA_MSK       (0xff)
+#define PERIDOT_SPI_ACCESS_TXDATA_OFST      (0)
+#define PERIDOT_SPI_ACCESS_SS_MSK           (0x100)
+#define PERIDOT_SPI_ACCESS_SS_OFST          (8)
+#define PERIDOT_SPI_ACCESS_RDY_MSK          (0x200)
+#define PERIDOT_SPI_ACCESS_RDY_OFST         (9)
+#define PERIDOT_SPI_ACCESS_STA_MSK          (0x200)
+#define PERIDOT_SPI_ACCESS_STA_OFST         (9)
+#define PERIDOT_SPI_ACCESS_IRQENA_MSK       (0x8000)
+#define PERIDOT_SPI_ACCESS_IRQENA_OFST      (15)
+
+/* SPI config register */
+#define PERIDOT_SPI_CONFIG_REG              1
+#define IOADDR_PERIDOT_SPI_CONFIG(base) \
+  __IO_CALC_ADDRESS_NATIVE(base, PERIDOT_SPI_CONFIG_REG)
+#define IORD_PERIDOT_SPI_CONFIG(base)\
+  IORD(base, PERIDOT_SPI_CONFIG_REG)
+#define IOWR_PERIDOT_SPI_CONFIG(base, data) \
+  IOWR(base, PERIDOT_SPI_CONFIG_REG, data)
+#define PERIDOT_SPI_CONFIG_CLKDIV_MSK       (0x3ff)
+#define PERIDOT_SPI_CONFIG_CLKDIV_OFST      (0)
+#define PERIDOT_SPI_CONFIG_MODE_MSK         (0x1800)
+#define PERIDOT_SPI_CONFIG_MODE_OFST        (11)
+#define PERIDOT_SPI_CONFIG_RVS_MSK          (0x8000)
+#define PERIDOT_SPI_CONFIG_RVS_OFST         (15)
+
+#endif /* __PERIDOT_SPI_REGS_H__ */
