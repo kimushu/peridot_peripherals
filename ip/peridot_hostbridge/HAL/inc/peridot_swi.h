@@ -34,7 +34,7 @@ extern void peridot_swi_init(peridot_swi_state *sp,
 extern int peridot_swi_set_led(alt_u32 value);
 extern int peridot_swi_get_led(alt_u32 *ptr);
 
-extern int peridot_swi_reset_cpu(void);
+extern int peridot_swi_reset_cpu(alt_u32 key);
 
 extern int peridot_swi_set_handler(void (*isr)(void *), void *param);
 

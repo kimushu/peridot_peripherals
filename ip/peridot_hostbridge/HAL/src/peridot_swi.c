@@ -74,7 +74,7 @@ int peridot_swi_get_led(alt_u32 *ptr)
   return PERIDOT_SWI_RSTSTS_LED_WIDTH;
 }
 
-__attribute__((noreturn)) int peridot_swi_reset_cpu(void)
+int peridot_swi_reset_cpu(alt_u32 key)
 {
   if (!swi_sp)
   {
@@ -82,7 +82,7 @@ __attribute__((noreturn)) int peridot_swi_reset_cpu(void)
   }
 
   IOWR_PERIDOT_SWI_RSTSTS(swi_sp->base,
-      PERIDOT_SWI_RSTSTS_KEY_VAL | PERIDOT_SWI_RSTSTS_RST_MSK);
+      (key & PERIDOT_SWI_RSTSTS_KEY_MSK) | PERIDOT_SWI_RSTSTS_RST_MSK);
 
   // Never return
   for (;;);
