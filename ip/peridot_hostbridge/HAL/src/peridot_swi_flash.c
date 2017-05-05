@@ -224,6 +224,9 @@ static int peridot_swi_flash_query_devid(peridot_swi_flash_dev *dev)
  */
 static int peridot_swi_flash_query(peridot_swi_flash_dev *dev)
 {
+  const alt_u8 cmd[] = {CMD_READ_STATUS, 0};
+  peridot_swi_flash_command(sizeof(cmd), cmd, 0, NULL, 0);
+
   if (peridot_swi_flash_query_sfdp(dev) == 0) {
     return 0;
   }
