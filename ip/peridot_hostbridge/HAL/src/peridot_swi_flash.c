@@ -1,6 +1,7 @@
 #include "peridot_swi.h"
 #include <errno.h>
 #include <string.h>
+#include <limits.h>
 
 enum {
   CMD_PAGE_PROGRAM = 0x02,
@@ -117,7 +118,7 @@ static int peridot_swi_flash_query_sfdp(peridot_swi_flash_dev *dev)
   }
 
   // Get smallest erase size & instruction
-  region->block_size = ~0;
+  region->block_size = INT_MAX;
   for (index = 0; index < 4; ++index) {
     alt_u16 data = ((alt_u16 *)&basic[7])[index];
     alt_u8 shift = data & 0xff;
@@ -127,7 +128,7 @@ static int peridot_swi_flash_query_sfdp(peridot_swi_flash_dev *dev)
       dev->erase_inst = data >> 8;
     }
   }
-  if (region->block_size == ~0) {
+  if (region->block_size == INT_MAX) {
     return -ENOTSUP;
   }
 
