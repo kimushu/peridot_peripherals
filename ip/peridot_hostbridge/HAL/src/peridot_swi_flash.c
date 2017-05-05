@@ -491,9 +491,16 @@ static int peridot_swi_flash_write(alt_flash_dev *flash_info, int offset, const 
  */
 void peridot_swi_flash_init(peridot_swi_flash_dev *dev, const char *name)
 {
+  int region_index;
+
   if (peridot_swi_flash_query(dev) != 0) {
     // No available SPI flash
     return;
+  }
+
+  dev->dev.length = 0;
+  for (region_index = 0; region_index < dev->dev.number_of_regions; ++region_index) {
+    dev->dev.length += dev->dev.region_info[region_index].region_size;
   }
 
   dev->dev.name  = name;
