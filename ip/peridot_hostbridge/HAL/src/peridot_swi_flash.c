@@ -275,7 +275,7 @@ static int peridot_swi_flash_compare(alt_flash_dev *flash_info, int data_offset,
   }
 
   while (length > 0) {
-    chunk_len = sizeof(buffer) > length ? sizeof(buffer) : length;
+    chunk_len = sizeof(buffer) < length ? sizeof(buffer) : length;
     result = peridot_swi_flash_command(
         peridot_swi_flash_set_addr(flash, cmd + 1, data_offset) + 1,
         cmd, chunk_len, buffer, 0);
