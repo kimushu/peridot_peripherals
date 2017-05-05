@@ -14,6 +14,7 @@ set_sw_property class_generation_callback class_generation
 
 # Source files
 add_sw_property c_source HAL/src/peridot_swi.c
+add_sw_property c_source HAL/src/peridot_swi_flash.c
 add_sw_property asm_source HAL/src/peridot_swi_flash_boot.S
 add_sw_property include_source HAL/inc/peridot_swi.h
 add_sw_property include_source inc/peridot_swi_regs.h

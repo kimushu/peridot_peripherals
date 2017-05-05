@@ -31,7 +31,9 @@ static void peridot_swi_irq(void *context, alt_u32 id)
 }
 
 void peridot_swi_init(peridot_swi_state *sp,
-                      alt_u32 irq_controller_id, alt_u32 irq)
+                      alt_u32 irq_controller_id, alt_u32 irq,
+                      peridot_swi_flash_dev *flash_dev,
+                      const char *flash_name)
 {
   swi_sp = sp;
 
@@ -45,6 +47,10 @@ void peridot_swi_init(peridot_swi_state *sp,
   (void)irq_controller_id;
   alt_irq_register(irq, sp, peridot_swi_irq);
 #endif
+
+  if (flash_dev) {
+    peridot_swi_flash_init(flash_dev, flash_name);
+  }
 }
 
 int peridot_swi_set_led(alt_u32 value)
