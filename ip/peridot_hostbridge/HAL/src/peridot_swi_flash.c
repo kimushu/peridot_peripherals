@@ -34,8 +34,10 @@ static int div_power2(int numerator, unsigned int denominator)
 static int peridot_swi_flash_read_sfdp(alt_u8 address, void *buffer, int length)
 {
   alt_u8 cmd[] = {CMD_READ_SFDP, 0x00, 0x00, address, 0x00};
-  if (peridot_swi_flash_command(sizeof(cmd), cmd, length, buffer, 0) != length) {
-    return -EIO;
+  int result;
+  result = peridot_swi_flash_command(sizeof(cmd), cmd, length, buffer, 0);
+  if (result < 0) {
+    return result;
   }
   return length;
 }
@@ -145,17 +147,18 @@ static int peridot_swi_flash_query_devid(peridot_swi_flash_dev *dev)
   alt_u8 buf[3];
   alt_u32 jedec_id;
   flash_region *region;
+  int result;
 
-  if (peridot_swi_flash_command(
-        sizeof(cmd_did), cmd_did, sizeof(device_id), &device_id, 0
-      ) != sizeof(device_id)) {
-    return -EIO;
+  result = peridot_swi_flash_command(
+        sizeof(cmd_did), cmd_did, sizeof(device_id), &device_id, 0);
+  if (result < 0) {
+    return result;
   }
 
-  if (peridot_swi_flash_command(
-        sizeof(cmd_jid), cmd_jid, sizeof(buf), buf, 0
-      ) != sizeof(buf)) {
-    return -EIO;
+  result = peridot_swi_flash_command(
+        sizeof(cmd_jid), cmd_jid, sizeof(buf), buf, 0);
+  if (result < 0) {
+    return result;
   }
   jedec_id = (buf[1] << 16) | (buf[2] << 8) | (buf[3]);
 

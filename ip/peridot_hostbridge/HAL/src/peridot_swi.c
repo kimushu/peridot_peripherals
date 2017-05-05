@@ -198,6 +198,6 @@ int peridot_swi_flash_command(alt_u32 write_length, const alt_u8 *write_data,
     IOWR_PERIDOT_SWI_FLASH(base, 0);
   }
 
-  return read_length;
+  return 0;
 }
 
