@@ -161,7 +161,7 @@ static int peridot_swi_flash_query_devid(peridot_swi_flash_dev *dev)
   if (result < 0) {
     return result;
   }
-  jedec_id = (buf[1] << 16) | (buf[2] << 8) | (buf[3]);
+  jedec_id = (buf[0] << 16) | (buf[1] << 8) | (buf[2]);
 
   dev->page_size = 256;
   dev->four_bytes_mode = 0;
