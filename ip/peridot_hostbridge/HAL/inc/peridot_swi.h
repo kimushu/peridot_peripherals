@@ -3,6 +3,15 @@
 
 #include "alt_types.h"
 #include "sys/alt_flash_dev.h"
+#include "system.h"
+
+#ifdef __PERIDOT_HOSTBRIDGE
+// For newgen
+# define PERIDOT_SWI_HAS_EPCSBOOT(name) name##_USE_EPCSBOOT
+#else
+// For classic
+# define PERIDOT_SWI_HAS_EPCSBOOT(name) 1
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,7 +40,7 @@ peridot_swi_flash_dev;
     name##_BASE,                                \
   };                                            \
   peridot_swi_flash_dev state##_flash[          \
-    name##_USE_EPCSBOOT ? 1 : 0                 \
+    PERIDOT_SWI_HAS_EPCSBOOT(name) ? 1 : 0      \
   ]
 
 extern void peridot_swi_init(peridot_swi_state *sp,
@@ -42,13 +51,13 @@ extern void peridot_swi_init(peridot_swi_state *sp,
 extern void peridot_swi_flash_init(peridot_swi_flash_dev *dev,
                                    const char *name);
 
-#define PERIDOT_SWI_STATE_INIT(name, state)        \
-  peridot_swi_init(                                \
-    &state,                                        \
-    name##_IRQ_INTERRUPT_CONTROLLER_ID,            \
-    name##_IRQ,                                    \
-    name##_USE_EPCSBOOT ? state##_flash : 0,       \
-    name##_USE_EPCSBOOT ? name##_NAME "_flash" : 0 \
+#define PERIDOT_SWI_STATE_INIT(name, state)                   \
+  peridot_swi_init(                                           \
+    &state,                                                   \
+    name##_IRQ_INTERRUPT_CONTROLLER_ID,                       \
+    name##_IRQ,                                               \
+    PERIDOT_SWI_HAS_EPCSBOOT(name) ? state##_flash : 0,       \
+    PERIDOT_SWI_HAS_EPCSBOOT(name) ? name##_NAME "_flash" : 0 \
   )
 
 extern int peridot_swi_set_led(alt_u32 value);
