@@ -73,11 +73,6 @@
 #define PERIDOT_SWI_RSTSTS_UIDVALID_OFST    (15)
 #define PERIDOT_SWI_RSTSTS_KEY_MSK          (0xffff0000u)
 #define PERIDOT_SWI_RSTSTS_KEY_OFST         (16)
-#ifdef __PERIDOT_HOSTBRIDGE
-#define PERIDOT_SWI_RSTSTS_KEY_VAL          ((PERIDOT_HOSTBRIDGE_CPURESET_KEY)<<16)
-#else
-#define PERIDOT_SWI_RSTSTS_KEY_VAL          (0xdead0000u)
-#endif
 
 /* FLASH register */
 #define PERIDOT_SWI_FLASH_REG               5

@@ -31,7 +31,9 @@ static void peridot_swi_irq(void *context, alt_u32 id)
 }
 
 void peridot_swi_init(peridot_swi_state *sp,
-                      alt_u32 irq_controller_id, alt_u32 irq)
+                      alt_u32 irq_controller_id, alt_u32 irq,
+                      peridot_swi_flash_dev *flash_dev,
+                      const char *flash_name)
 {
   swi_sp = sp;
 
@@ -45,6 +47,10 @@ void peridot_swi_init(peridot_swi_state *sp,
   (void)irq_controller_id;
   alt_irq_register(irq, sp, peridot_swi_irq);
 #endif
+
+  if (flash_dev) {
+    peridot_swi_flash_init(flash_dev, flash_name);
+  }
 }
 
 int peridot_swi_set_led(alt_u32 value)
@@ -74,7 +80,7 @@ int peridot_swi_get_led(alt_u32 *ptr)
   return PERIDOT_SWI_RSTSTS_LED_WIDTH;
 }
 
-__attribute__((noreturn)) int peridot_swi_reset_cpu(void)
+int peridot_swi_reset_cpu(alt_u32 key)
 {
   if (!swi_sp)
   {
@@ -82,7 +88,7 @@ __attribute__((noreturn)) int peridot_swi_reset_cpu(void)
   }
 
   IOWR_PERIDOT_SWI_RSTSTS(swi_sp->base,
-      PERIDOT_SWI_RSTSTS_KEY_VAL | PERIDOT_SWI_RSTSTS_RST_MSK);
+      (key & PERIDOT_SWI_RSTSTS_KEY_MSK) | PERIDOT_SWI_RSTSTS_RST_MSK);
 
   // Never return
   for (;;);
@@ -192,6 +198,6 @@ int peridot_swi_flash_command(alt_u32 write_length, const alt_u8 *write_data,
     IOWR_PERIDOT_SWI_FLASH(base, 0);
   }
 
-  return read_length;
+  return 0;
 }
 
