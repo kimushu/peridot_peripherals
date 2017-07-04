@@ -1,7 +1,21 @@
-proc class_generation { args } {
-	set inst [ lindex $args 0 ]
+proc initialize { args } {
+	set deviceFamily [ get_module_assignment DEVICE_FAMILY ]
+	if { $deviceFamily != "MAX 10" } {
+		set name flash_boot.after_cfg
+		add_class_sw_setting $name boolean_define_only
+		set_class_sw_setting_property $name destination system_h_define
+		set_class_sw_setting_property $name identifier SWI_FLASH_BOOT_AFTER_CFG
+		set_class_sw_setting_property $name default_value 0
+		set_class_sw_setting_property $name description "Load ELF image after FPGA configuration data"
+	}
+}
+
+proc generate { args } {
+	puts "-------- GERATATE --------"
+	set inst [ lindex [ split [ get_driver [ lindex $args 0 ] ] : ] 0 ]
 	set bspdir [ lindex $args 1 ]
 	set subdir [ lindex $args 2 ]
+	set deviceFamily [ get_module_assignment DEVICE_FAMILY ]
 
 	set mkfile $bspdir/flash_boot_gen.mk
 	set example "include $(BSP_ROOT_DIR)/flash_boot_gen.mk"
@@ -24,12 +38,17 @@ proc class_generation { args } {
 	}
 
 	puts "INFO: Please append `$example' to your Makefile."
-	puts "INFO: You can build ELF-embedded RBF by running `combined_rbf' target"
 
-	if { [ get_setting $inst.flash_boot.after_cfg ] == "true" } {
-		set offset "auto"
-	} else {
+	if { $deviceFamily == "MAX 10" } {
 		set offset [ get_setting $inst.flash_boot.offset ]
+	} else {
+		puts "INFO: You can build ELF-embedded RBF by running `combined_rbf' target"
+
+		if { [ get_setting $inst.flash_boot.after_cfg ] == "true" } {
+			set offset "auto"
+		} else {
+			set offset [ get_setting $inst.flash_boot.offset ]
+		}
 	}
 
 	set comp "none"

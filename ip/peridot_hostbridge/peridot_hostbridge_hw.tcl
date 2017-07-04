@@ -612,6 +612,8 @@ proc elaboration_callback {} {
 	set_module_assignment embeddedsw.CMacro.USE_EPCSBOOT	[expr ([get_parameter_value SWI_USE_EPCSBOOT]? 1 : 0)]
 	set_module_assignment embeddedsw.CMacro.USE_MESSAGE		[expr ([get_parameter_value SWI_USE_MESSAGE]? 1 : 0)]
 
+	set_module_assignment DEVICE_FAMILY $devfamily
+
 	# Explain that timestamp will only be known during generation thus will not be shown
 	send_message info "Time code and clock rate will be automatically updated when this component is generated."
 }
