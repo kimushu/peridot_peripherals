@@ -11,8 +11,10 @@ set elf $opts(--elf)
 set rbf {}
 if { [ array get opts --rbf ] != "" } {
 	set rbf $opts(--rbf)
+	set ofs $opts(--offset)
+} else {
+	set ofs auto
 }
-set ofs $opts(--offset)
 set cmp $opts(--compress)
 
 #------------------------------------------------------------------------
@@ -82,10 +84,18 @@ puts stderr [ format "Info: Stripped ELF size = 0x%x" \
 	[ string length $elf_new ] ]
 set dest $dest$elf_new
 
-puts stderr "Info: Writing RBF ($out) ..."
-RBF_write_file $dest $out
-puts stderr [ format "Info: Output RBF size = 0x%x" \
-	[ string length $dest ] ]
+if { $rbf != "" } {
+	puts stderr "Info: Writing RBF ($out) ..."
+	RBF_write_file $dest $out
+	puts stderr [ format "Info: Output RBF size = 0x%x" \
+		[ string length $dest ] ]
+} else {
+	puts stderr "Info: Writing ELF ($out) ..."
+	set fd [ open $out w ]
+	fconfigure $fd -translation binary
+	puts -nonewline $fd $dest
+	close $fd
+}
 
 puts stderr \
 	"Info: Flash program file ($out) has been generated successfully."
