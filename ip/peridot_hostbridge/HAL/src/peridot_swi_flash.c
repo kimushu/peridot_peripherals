@@ -466,6 +466,10 @@ static int peridot_swi_flash_write(alt_flash_dev *flash_info, int offset, const 
       block_length = length;
     }
 
+    if (block_length == 0) {
+      break;
+    }
+
     if (peridot_swi_flash_compare(flash_info, offset, src_addr, block_length) != 0) {
       result = (*flash_info->erase_block)(flash_info, block_offset);
       if (result < 0) {
