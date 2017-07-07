@@ -236,7 +236,7 @@ proc ELF_compact { varName procName type } {
 			# Skip this segment
 			continue
 		}
-		
+
 		# Make filler
 		set filler [ string repeat { } [ expr $phdr(p_memsz) - $phdr(p_filesz) ] ]
 
