@@ -398,7 +398,6 @@ static int peridot_swi_flash_erase_block(alt_flash_dev *flash_info, int block_of
 static int peridot_swi_flash_write_block(alt_flash_dev *flash_info, int block_offset, int data_offset, const void *data, int length)
 {
   peridot_swi_flash_dev *flash = (peridot_swi_flash_dev *)flash_info;
-  flash_region *region = &flash_info->region_info[0];
   alt_u8 cmd[5];
   int result;
 
@@ -406,8 +405,6 @@ static int peridot_swi_flash_write_block(alt_flash_dev *flash_info, int block_of
       ((data_offset + length) > flash_info->length)) {
     return -EFAULT;
   }
-
-  block_offset = div_power2(data_offset, region->block_size);
 
   while (length > 0) {
     int page_offset = data_offset & (flash->page_size - 1);
@@ -460,31 +457,28 @@ static int peridot_swi_flash_write(alt_flash_dev *flash_info, int offset, const 
 
   while (length > 0) {
     int block_offset = offset & ~(region->block_size - 1);
-    int block_length = region->block_size - block_offset;
+    int page_offset = offset & (region->block_size - 1);
+    int page_length = region->block_size - page_offset;
 
-    if (length < block_length) {
-      block_length = length;
+    if (length < page_length) {
+      page_length = length;
     }
 
-    if (block_length == 0) {
-      break;
-    }
-
-    if (peridot_swi_flash_compare(flash_info, offset, src_addr, block_length) != 0) {
+    if (peridot_swi_flash_compare(flash_info, offset, src_addr, page_length) != 0) {
       result = (*flash_info->erase_block)(flash_info, block_offset);
       if (result < 0) {
         return result;
       }
 
-      result = (*flash_info->write_block)(flash_info, block_offset, offset, src_addr, block_length);
+      result = (*flash_info->write_block)(flash_info, block_offset, offset, src_addr, page_length);
       if (result < 0) {
         return result;
       }
     }
 
-    offset += block_length;
-    src_addr = (const alt_u8 *)src_addr + block_length;
-    length -= block_length;
+    offset += page_length;
+    src_addr = (const alt_u8 *)src_addr + page_length;
+    length -= page_length;
   }
 
   return 0;
