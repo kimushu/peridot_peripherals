@@ -236,9 +236,12 @@ proc ELF_compact { varName procName type } {
 			# Skip this segment
 			continue
 		}
+		
+		# Make filler
+		set filler [ string repeat { } [ expr $phdr(p_memsz) - $phdr(p_filesz) ] ]
 
 		# Try compression
-		set result [ $procName $phdr(content) ]
+		set result [ $procName $phdr(content)$filler ]
 		set newlen [ string length $result ]
 		if { ($newlen == 0) || ($newlen >= $phdr(p_filesz)) } {
 			# Compression error / Enlarged by compression :-(
