@@ -451,7 +451,7 @@ proc LZ4HC_compress_generic_g_nl { inputSize compressionLevel } {
 				if { ($Pstart2 - $Pip) < 18 } {
 					set new_ml $ml
 					if { $new_ml > 18 } { set new_ml 18 }
-					if { ($Pip + $new_ml) > ($Pstart2 + $ml2 + 4) } {
+					if { ($Pip + $new_ml) > ($Pstart2 + $ml2 - 4) } {
 						set new_ml [ expr { ($Pstart2 - $Pip) + $ml2 - 4 } ]
 					}
 					set correction [ expr { $new_ml - ($Pstart2 - $Pip) } ]
