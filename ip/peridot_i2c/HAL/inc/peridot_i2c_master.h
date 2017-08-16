@@ -3,8 +3,7 @@
 
 #include "alt_types.h"
 #ifdef __tinythreads__
-# include <pthread.h>
-# include <semaphore.h>
+# include <tthread.h>
 #endif
 #include "system.h"
 
