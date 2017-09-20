@@ -3,6 +3,8 @@
 #include <string.h>
 #include <limits.h>
 
+#ifdef SWI_ENABLE_FEATURE_FLASH
+
 enum {
   CMD_PAGE_PROGRAM = 0x02,
   CMD_READ_BYTES   = 0x03,
@@ -511,3 +513,4 @@ void peridot_swi_flash_init(peridot_swi_flash_dev *dev, const char *name)
   alt_flash_device_register(&dev->dev);
 }
 
+#endif  /* SWI_ENABLE_FEATURE_FLASH */

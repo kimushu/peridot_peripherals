@@ -48,9 +48,11 @@ void peridot_swi_init(peridot_swi_state *sp,
   alt_irq_register(irq, sp, peridot_swi_irq);
 #endif
 
+#ifdef SWI_ENABLE_FEATURE_FLASH
   if (flash_dev) {
     peridot_swi_flash_init(flash_dev, flash_name);
   }
+#endif
 }
 
 int peridot_swi_set_led(alt_u32 value)

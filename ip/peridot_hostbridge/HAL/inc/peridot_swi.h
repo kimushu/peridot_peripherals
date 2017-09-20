@@ -5,13 +5,17 @@
 #include "sys/alt_flash_dev.h"
 #include "system.h"
 
-#ifdef __PERIDOT_HOSTBRIDGE
+#ifdef SWI_ENABLE_FEATURE_FLASH
+# ifdef __PERIDOT_HOSTBRIDGE
 // For newgen
-# define PERIDOT_SWI_HAS_EPCSBOOT(name) name##_USE_EPCSBOOT
-#else
+#  define PERIDOT_SWI_HAS_EPCSBOOT(name) name##_USE_EPCSBOOT
+# else
 // For classic
-# define PERIDOT_SWI_HAS_EPCSBOOT(name) 1
-#endif
+#  define PERIDOT_SWI_HAS_EPCSBOOT(name) 1
+# endif
+#else
+# define PERIDOT_SWI_HAS_EPCSBOOT(name) 0
+#endif  /* SWI_ENABLE_FEATURE_FLASH */
 
 #ifdef __cplusplus
 extern "C" {
