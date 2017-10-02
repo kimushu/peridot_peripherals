@@ -7,12 +7,6 @@
 
 static peridot_swi_state *swi_sp;
 
-#ifdef SWI_FLASH_BOOT_ENABLE
-/* This dummy variable prevents linker from dropping startup sections */
-extern int __reset_swi;
-__attribute__((used)) static const void *peridot_swi_dummy = &__reset_swi;
-#endif  /* SWI_FLASH_BOOT_ENABLE */
-
 #ifdef ALT_ENHANCED_INTERRUPT_API_PRESENT
 static void peridot_swi_irq(void *context)
 #else
@@ -31,9 +25,7 @@ static void peridot_swi_irq(void *context, alt_u32 id)
 }
 
 void peridot_swi_init(peridot_swi_state *sp,
-                      alt_u32 irq_controller_id, alt_u32 irq,
-                      peridot_swi_flash_dev *flash_dev,
-                      const char *flash_name)
+                      alt_u32 irq_controller_id, alt_u32 irq)
 {
   swi_sp = sp;
 
@@ -46,12 +38,6 @@ void peridot_swi_init(peridot_swi_state *sp,
 #else
   (void)irq_controller_id;
   alt_irq_register(irq, sp, peridot_swi_irq);
-#endif
-
-#ifdef SWI_ENABLE_FEATURE_FLASH
-  if (flash_dev) {
-    peridot_swi_flash_init(flash_dev, flash_name);
-  }
 #endif
 }
 
