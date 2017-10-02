@@ -6,6 +6,9 @@
 # include <tthread.h>
 #endif
 #include "system.h"
+#ifdef PERIDOT_SPI_FLASH_ENABLE
+# include "sys/alt_flash_dev.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,12 +21,6 @@ typedef struct peridot_spi_master_state_s
   alt_u32 freq;
   alt_u32 irq_controller_id;
   alt_u32 irq;
-#ifdef __PERIDOT_PFC_INTERFACE
-  const struct peridot_pfc_map_out_s *ss_n_pfc_map;
-  const struct peridot_pfc_map_out_s *sclk_pfc_map;
-  const struct peridot_pfc_map_out_s *mosi_pfc_map;
-  const struct peridot_pfc_map_in_s  *miso_pfc_map;
-#endif  /* __PERIDOT_PFC_INTERFACE */
   alt_8 slave_locked;
 #ifdef __tinythreads__
   pthread_mutex_t lock;
@@ -32,10 +29,40 @@ typedef struct peridot_spi_master_state_s
   volatile alt_u8 lock;
   volatile alt_u8 done;
 #endif
+#ifdef __PERIDOT_PFC_INTERFACE
+  const struct peridot_pfc_map_out_s *ss_n_pfc_map;
+#endif
 }
 peridot_spi_master_state;
 
-#define PERIDOT_SPI_MASTER_STATE_INSTANCE_HEADER(name, state, ...) \
+#ifdef __PERIDOT_PFC_INTERFACE
+typedef struct peridot_spi_master_pfc_map_s {
+  peridot_spi_master_state *sp;
+  const struct peridot_pfc_map_out_s *ss_n_pfc_map;
+  const struct peridot_pfc_map_out_s *sclk_pfc_map;
+  const struct peridot_pfc_map_out_s *mosi_pfc_map;
+  const struct peridot_pfc_map_in_s  *miso_pfc_map;
+}
+peridot_spi_master_pfc_map;
+#endif  /* __PERIDOT_PFC_INTERFACE */
+
+#ifdef PERIDOT_SPI_FLASH_ENABLE
+typedef struct peridot_spi_flash_dev_s
+{
+  alt_flash_dev dev;
+  alt_u8 erase_inst;
+  alt_u8 four_bytes_mode;
+  alt_u16 page_size;
+}
+peridot_spi_flash_dev;
+
+# define PERIDOT_SPI_MASTER_FLASH_STATE_INSTANCE(name, state) \
+  peridot_spi_flash_dev state##_flash
+#else
+# define PERIDOT_SPI_MASTER_FLASH_STATE_INSTANCE(name, state)
+#endif
+
+#define PERIDOT_SPI_MASTER_STATE_INSTANCE(name, state) \
   peridot_spi_master_state state =      \
   {                                     \
     #name,                              \
@@ -43,35 +70,28 @@ peridot_spi_master_state;
     name##_FREQ,                        \
     name##_IRQ_INTERRUPT_CONTROLLER_ID, \
     name##_IRQ,                         \
-    __VA_ARGS__                         \
-  }
+  };                                    \
+  PERIDOT_SPI_MASTER_FLASH_STATE_INSTANCE(name, state)
 
-#ifdef __PERIDOT_PFC_INTERFACE
-#define PERIDOT_SPI_MASTER_STATE_INSTANCE(name, state) \
-  extern const struct peridot_pfc_map_out_s state##_ss_n_pfc_map;\
-  extern const struct peridot_pfc_map_out_s state##_sclk_pfc_map;\
-  extern const struct peridot_pfc_map_out_s state##_mosi_pfc_map;\
-  extern const struct peridot_pfc_map_in_s  state##_miso_pfc_map;\
-  PERIDOT_SPI_MASTER_STATE_INSTANCE_HEADER(name, state,\
-    &state##_ss_n_pfc_map,\
-    &state##_sclk_pfc_map,\
-    &state##_mosi_pfc_map,\
-    &state##_miso_pfc_map,\
-  )
-#else   /* !__PERIDOT_PFC_INTERFACE */
-#define PERIDOT_SPI_MASTER_STATE_INSTANCE(name, state) \
-  PERIDOT_SPI_MASTER_STATE_INSTANCE_HEADER(name, state)
-#endif  /* !__PERIDOT_PFC_INTERFACE */
-
+#ifdef PERIDOT_SPI_FLASH_ENABLE
+extern void peridot_spi_master_init(peridot_spi_master_state *state, peridot_spi_flash_dev *flash_dev, const char *flash_name);
+  # define PERIDOT_SPI_MASTER_STATE_INIT(name, state) \
+  peridot_spi_master_init(&state, &state##_flash, name##_NAME "_flash")
+#else
 extern void peridot_spi_master_init(peridot_spi_master_state *state);
-
-#define PERIDOT_SPI_MASTER_STATE_INIT(name, state) \
+# define PERIDOT_SPI_MASTER_STATE_INIT(name, state) \
   peridot_spi_master_init(&state)
+#endif
 
 #ifdef __PERIDOT_PFC_INTERFACE
-extern int peridot_spi_master_configure_pins(peridot_spi_master_state *sp,
+extern int peridot_spi_master_configure_pins(const peridot_spi_master_pfc_map *map,
                                              alt_u32 sclk, alt_32 mosi, alt_32 miso, int dry_run);
 #endif  /* __PERIDOT_PFC_INTERFACE */
+
+#ifdef PERIDOT_SPI_FLASH_ENABLE
+extern int peridot_spi_flash_command(alt_u32 write_length, const alt_u8 *write_data,
+                                     alt_u32 read_length, alt_u8 *read_data, alt_u32 flags);
+#endif
 
 extern int peridot_spi_master_get_clkdiv(peridot_spi_master_state *sp, alt_u32 bitrate, alt_u32 *clkdiv);
 

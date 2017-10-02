@@ -1,7 +1,9 @@
 #ifndef __PERIDOT_SPI_REGS_H__
 #define __PERIDOT_SPI_REGS_H__
 
-#include <io.h>
+#ifndef __ASSEMBLER__
+# include <io.h>
+#endif
 
 /* SPI access register */
 #define PERIDOT_SPI_ACCESS_REG              0

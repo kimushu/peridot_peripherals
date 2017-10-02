@@ -5,7 +5,7 @@
 #include "peridot_spi_regs.h"
 #include "system.h"
 #ifdef __PERIDOT_PFC_INTERFACE
-#include "peridot_pfc_interface.h"
+# include "peridot_pfc_interface.h"
 #endif  /* __PERIDOT_PFC_INTERFACE */
 
 #ifdef ALT_ENHANCED_INTERRUPT_API_PRESENT
@@ -24,7 +24,11 @@ static void peridot_spi_master_irq(void *context, alt_u32 id)
 #endif
 }
 
+#ifdef PERIDOT_SPI_FLASH_ENABLE
+void peridot_spi_master_init(peridot_spi_master_state *sp, peridot_spi_flash_dev *flash_dev, const char *flash_name)
+#else
 void peridot_spi_master_init(peridot_spi_master_state *sp)
+#endif
 {
 #ifdef __tinythreads__
   pthread_mutex_init(&sp->lock, NULL);
@@ -40,15 +44,23 @@ void peridot_spi_master_init(peridot_spi_master_state *sp)
 #else
   alt_irq_register(sp->irq, sp, peridot_spi_master_irq);
 #endif
+
+#ifdef PERIDOT_SPI_FLASH_ENABLE
+  if (flash_dev) {
+    extern void peridot_spi_flash_init(peridot_spi_flash_dev *dev, const char *name);
+    peridot_spi_flash_init(flash_dev, flash_name);
+  }
+#endif
 }
 
 #ifdef __PERIDOT_PFC_INTERFACE
-int peridot_spi_master_configure_pins(peridot_spi_master_state *sp,
+int peridot_spi_master_configure_pins(const peridot_spi_master_pfc_map *map,
                                       alt_u32 sclk, alt_32 mosi, alt_32 miso, int dry_run)
 {
-  const peridot_pfc_map_out *const sclk_pfc_map = sp->sclk_pfc_map;
-  const peridot_pfc_map_out *const mosi_pfc_map = sp->mosi_pfc_map;
-  const peridot_pfc_map_in  *const miso_pfc_map = sp->miso_pfc_map;
+  const peridot_pfc_map_out *const sclk_pfc_map = map->sclk_pfc_map;
+  const peridot_pfc_map_out *const mosi_pfc_map = map->mosi_pfc_map;
+  const peridot_pfc_map_in  *const miso_pfc_map = map->miso_pfc_map;
+  map->sp->ss_n_pfc_map = map->ss_n_pfc_map;
 
   if ((sclk < sizeof(sclk_pfc_map->out_funcs)) &&
       ((mosi < 0) || (mosi < sizeof(mosi_pfc_map->out_funcs))) &&
@@ -65,7 +77,7 @@ int peridot_spi_master_configure_pins(peridot_spi_master_state *sp,
     {
       if (!dry_run)
       {
-        if (sp->slave_locked >= 0)
+        if (map->sp->slave_locked >= 0)
         {
           return -EAGAIN;
         }

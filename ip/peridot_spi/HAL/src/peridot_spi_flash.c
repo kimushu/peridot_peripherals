@@ -1,9 +1,12 @@
-#include "peridot_swi.h"
+#include "peridot_spi_master.h"
 #include <errno.h>
 #include <string.h>
 #include <limits.h>
 
-#ifdef SWI_ENABLE_FEATURE_FLASH
+#ifdef PERIDOT_SPI_FLASH_ENABLE
+
+#define COMBINE1(x,y) COMBINE2(x,y)
+#define COMBINE2(x,y) x##y
 
 enum {
   CMD_PAGE_PROGRAM = 0x02,
@@ -32,13 +35,28 @@ static int div_power2(int numerator, unsigned int denominator)
 }
 
 /**
+ * Issue command to SPI for Flash
+ */
+int peridot_spi_flash_command(alt_u32 write_length, const alt_u8 *write_data,
+                              alt_u32 read_length, alt_u8 *read_data, alt_u32 flags)
+{
+  return peridot_spi_master_transfer(
+    COMBINE1(PERIDOT_SPI_MASTER_DRIVER_INSTANCE, _DRIVER_INSTANCE),
+    PERIDOT_SPI_FLASH_SLAVE_NUMBER,
+    COMBINE1(PERIDOT_SPI_MASTER_DRIVER_INSTANCE, _FLASH_CLKDIV),
+    write_length, write_data,
+    write_length, read_length, read_data, flags
+  );
+}
+
+/**
  * Read SFDP data
  */
-static int peridot_swi_flash_read_sfdp(alt_u8 address, void *buffer, int length)
+static int peridot_spi_flash_read_sfdp(alt_u8 address, void *buffer, int length)
 {
   alt_u8 cmd[] = {CMD_READ_SFDP, 0x00, 0x00, address, 0x00};
   int result;
-  result = peridot_swi_flash_command(sizeof(cmd), cmd, length, buffer, 0);
+  result = peridot_spi_flash_command(sizeof(cmd), cmd, length, buffer, 0);
   if (result < 0) {
     return result;
   }
@@ -48,14 +66,14 @@ static int peridot_swi_flash_read_sfdp(alt_u8 address, void *buffer, int length)
 /**
  * Search SDFP Basic table offset
  */
-static int peridot_swi_flash_search_sfdp_table(alt_u8 id_lsb, alt_u8 id_msb)
+static int peridot_spi_flash_search_sfdp_table(alt_u8 id_lsb, alt_u8 id_msb)
 {
   int result;
   alt_u32 buf[2];
   int num_params;
   int index;
 
-  result = peridot_swi_flash_read_sfdp(0x00, buf, sizeof(buf));
+  result = peridot_spi_flash_read_sfdp(0x00, buf, sizeof(buf));
   if (result < 0) {
     return result;
   }
@@ -68,7 +86,7 @@ static int peridot_swi_flash_search_sfdp_table(alt_u8 id_lsb, alt_u8 id_msb)
 
   // Search JEDEC SFDP table
   for (index = 1; index <= num_params; ++index) {
-    result = peridot_swi_flash_read_sfdp(index * sizeof(buf), buf, sizeof(buf));
+    result = peridot_spi_flash_read_sfdp(index * sizeof(buf), buf, sizeof(buf));
     if (result < 0) {
       return result;
     }
@@ -84,7 +102,7 @@ static int peridot_swi_flash_search_sfdp_table(alt_u8 id_lsb, alt_u8 id_msb)
 /**
  * Query device information by JEDEC SFDP structure
  */
-static int peridot_swi_flash_query_sfdp(peridot_swi_flash_dev *dev)
+static int peridot_spi_flash_query_sfdp(peridot_spi_flash_dev *dev)
 {
   int result;
   flash_region *region;
@@ -92,13 +110,13 @@ static int peridot_swi_flash_query_sfdp(peridot_swi_flash_dev *dev)
   int index;
 
   // Search SFDP Basic flash table
-  result = peridot_swi_flash_search_sfdp_table(0x00, 0xff);
+  result = peridot_spi_flash_search_sfdp_table(0x00, 0xff);
   if (result < 0) {
     return result;
   }
 
   // Read SFDP Basic flash table
-  result = peridot_swi_flash_read_sfdp(result, basic, sizeof(basic));
+  result = peridot_spi_flash_read_sfdp(result, basic, sizeof(basic));
   if (result < 0) {
     return result;
   }
@@ -142,7 +160,7 @@ static int peridot_swi_flash_query_sfdp(peridot_swi_flash_dev *dev)
 /**
  * Query device information by Device ID (ABh/9Fh) commands
  */
-static int peridot_swi_flash_query_devid(peridot_swi_flash_dev *dev)
+static int peridot_spi_flash_query_devid(peridot_spi_flash_dev *dev)
 {
   static const alt_u8 cmd_did[] = {CMD_READ_DEVID, 0x00, 0x00};
   static const alt_u8 cmd_jid[] = {CMD_READ_JEDECID};
@@ -152,13 +170,13 @@ static int peridot_swi_flash_query_devid(peridot_swi_flash_dev *dev)
   flash_region *region;
   int result;
 
-  result = peridot_swi_flash_command(
+  result = peridot_spi_flash_command(
         sizeof(cmd_did), cmd_did, sizeof(device_id), &device_id, 0);
   if (result < 0) {
     return result;
   }
 
-  result = peridot_swi_flash_command(
+  result = peridot_spi_flash_command(
         sizeof(cmd_jid), cmd_jid, sizeof(buf), buf, 0);
   if (result < 0) {
     return result;
@@ -224,16 +242,16 @@ static int peridot_swi_flash_query_devid(peridot_swi_flash_dev *dev)
 /**
  * Query SPI flash information
  */
-static int peridot_swi_flash_query(peridot_swi_flash_dev *dev)
+static int peridot_spi_flash_query(peridot_spi_flash_dev *dev)
 {
   const alt_u8 cmd[] = {CMD_READ_STATUS, 0};
-  peridot_swi_flash_command(sizeof(cmd), cmd, 0, NULL, 0);
+  peridot_spi_flash_command(sizeof(cmd), cmd, 0, NULL, 0);
 
-  if (peridot_swi_flash_query_sfdp(dev) == 0) {
+  if (peridot_spi_flash_query_sfdp(dev) == 0) {
     return 0;
   }
 
-  if (peridot_swi_flash_query_devid(dev) == 0) {
+  if (peridot_spi_flash_query_devid(dev) == 0) {
     return 0;
   }
 
@@ -243,7 +261,7 @@ static int peridot_swi_flash_query(peridot_swi_flash_dev *dev)
 /**
  * Set address field according to four_bytes_mode
  */
-static int peridot_swi_flash_set_addr(peridot_swi_flash_dev *flash, alt_u8 *buffer, int offset)
+static int peridot_spi_flash_set_addr(peridot_spi_flash_dev *flash, alt_u8 *buffer, int offset)
 {
   if (flash->four_bytes_mode) {
     buffer[0] = (offset >> 24) & 0xff;
@@ -262,9 +280,9 @@ static int peridot_swi_flash_set_addr(peridot_swi_flash_dev *flash, alt_u8 *buff
 /**
  * Compare data
  */
-static int peridot_swi_flash_compare(alt_flash_dev *flash_info, int data_offset, const void *data, int length)
+static int peridot_spi_flash_compare(alt_flash_dev *flash_info, int data_offset, const void *data, int length)
 {
-  peridot_swi_flash_dev *flash = (peridot_swi_flash_dev *)flash_info;
+  peridot_spi_flash_dev *flash = (peridot_spi_flash_dev *)flash_info;
   flash_region *region = &flash_info->region_info[0];
   alt_u8 cmd[5] = {CMD_READ_BYTES};
   alt_u8 buffer[256];
@@ -278,8 +296,8 @@ static int peridot_swi_flash_compare(alt_flash_dev *flash_info, int data_offset,
 
   while (length > 0) {
     chunk_len = sizeof(buffer) < length ? sizeof(buffer) : length;
-    result = peridot_swi_flash_command(
-        peridot_swi_flash_set_addr(flash, cmd + 1, data_offset) + 1,
+    result = peridot_spi_flash_command(
+        peridot_spi_flash_set_addr(flash, cmd + 1, data_offset) + 1,
         cmd, chunk_len, buffer, 0);
     if (result < 0) {
       return result;
@@ -303,9 +321,9 @@ static int peridot_swi_flash_compare(alt_flash_dev *flash_info, int data_offset,
 /**
  * Read bytes from flash
  */
-static int peridot_swi_flash_read(alt_flash_dev *flash_info, int offset, void *dest_addr, int length)
+static int peridot_spi_flash_read(alt_flash_dev *flash_info, int offset, void *dest_addr, int length)
 {
-  peridot_swi_flash_dev *flash = (peridot_swi_flash_dev *)flash_info;
+  peridot_spi_flash_dev *flash = (peridot_spi_flash_dev *)flash_info;
   flash_region *region = &flash_info->region_info[0];
   alt_u8 cmd[5] = {CMD_READ_BYTES};
 
@@ -313,15 +331,15 @@ static int peridot_swi_flash_read(alt_flash_dev *flash_info, int offset, void *d
     return -EFAULT;
   }
 
-  return peridot_swi_flash_command(
-      peridot_swi_flash_set_addr(flash, cmd + 1, offset) + 1,
+  return peridot_spi_flash_command(
+      peridot_spi_flash_set_addr(flash, cmd + 1, offset) + 1,
       cmd, length, dest_addr, 0);
 }
 
 /**
  * Get flash information
  */
-static int peridot_swi_flash_get_info(alt_flash_fd *fd, flash_region **info, int *number_of_regions)
+static int peridot_spi_flash_get_info(alt_flash_fd *fd, flash_region **info, int *number_of_regions)
 {
   alt_flash_dev *flash_info = (alt_flash_dev *)fd;
 
@@ -339,14 +357,14 @@ static int peridot_swi_flash_get_info(alt_flash_fd *fd, flash_region **info, int
 /**
  * Wait busy state
  */
-static int peridot_swi_flash_wait_busy(void)
+static int peridot_spi_flash_wait_busy(void)
 {
   const alt_u8 cmd = CMD_READ_STATUS;
   alt_u8 status;
   int result;
 
   for (;;) {
-    result = peridot_swi_flash_command(1, &cmd, 1, &status, 0);
+    result = peridot_spi_flash_command(1, &cmd, 1, &status, 0);
     if (result < 0) {
       return result;
     }
@@ -362,9 +380,9 @@ static int peridot_swi_flash_wait_busy(void)
 /**
  * Erase block
  */
-static int peridot_swi_flash_erase_block(alt_flash_dev *flash_info, int block_offset)
+static int peridot_spi_flash_erase_block(alt_flash_dev *flash_info, int block_offset)
 {
-  peridot_swi_flash_dev *flash = (peridot_swi_flash_dev *)flash_info;
+  peridot_spi_flash_dev *flash = (peridot_spi_flash_dev *)flash_info;
   flash_region *region = &flash_info->region_info[0];
   alt_u8 cmd[5];
   int result;
@@ -378,28 +396,28 @@ static int peridot_swi_flash_erase_block(alt_flash_dev *flash_info, int block_of
   }
 
   cmd[0] = CMD_WRITE_ENABLE;
-  result = peridot_swi_flash_command(1, cmd, 0, NULL, 0);
+  result = peridot_spi_flash_command(1, cmd, 0, NULL, 0);
   if (result < 0) {
     return result;
   }
 
   cmd[0] = flash->erase_inst;
-  result = peridot_swi_flash_command(
-      peridot_swi_flash_set_addr(flash, cmd + 1, block_offset) + 1,
+  result = peridot_spi_flash_command(
+      peridot_spi_flash_set_addr(flash, cmd + 1, block_offset) + 1,
       cmd, 0, NULL, 0);
   if (result < 0) {
     return result;
   }
 
-  return peridot_swi_flash_wait_busy();
+  return peridot_spi_flash_wait_busy();
 }
 
 /**
  * Write block
  */
-static int peridot_swi_flash_write_block(alt_flash_dev *flash_info, int block_offset, int data_offset, const void *data, int length)
+static int peridot_spi_flash_write_block(alt_flash_dev *flash_info, int block_offset, int data_offset, const void *data, int length)
 {
-  peridot_swi_flash_dev *flash = (peridot_swi_flash_dev *)flash_info;
+  peridot_spi_flash_dev *flash = (peridot_spi_flash_dev *)flash_info;
   alt_u8 cmd[5];
   int result;
 
@@ -413,25 +431,25 @@ static int peridot_swi_flash_write_block(alt_flash_dev *flash_info, int block_of
     int page_length = flash->page_size - page_offset;
 
     cmd[0] = CMD_WRITE_ENABLE;
-    result = peridot_swi_flash_command(1, cmd, 0, NULL, 0);
+    result = peridot_spi_flash_command(1, cmd, 0, NULL, 0);
     if (result < 0) {
       return result;
     }
 
     cmd[0] = CMD_PAGE_PROGRAM;
-    result = peridot_swi_flash_command(
-        peridot_swi_flash_set_addr(flash, cmd + 1, data_offset) + 1,
-        cmd, 0, NULL, PERIDOT_SWI_FLASH_COMMAND_MERGE);
+    result = peridot_spi_flash_command(
+        peridot_spi_flash_set_addr(flash, cmd + 1, data_offset) + 1,
+        cmd, 0, NULL, PERIDOT_SPI_MASTER_MERGE);
     if (result < 0) {
       return result;
     }
 
-    result = peridot_swi_flash_command(page_length, data, 0, NULL, 0);
+    result = peridot_spi_flash_command(page_length, data, 0, NULL, 0);
     if (result < 0) {
       return result;
     }
 
-    result = peridot_swi_flash_wait_busy();
+    result = peridot_spi_flash_wait_busy();
     if (result < 0) {
       return result;
     }
@@ -447,7 +465,7 @@ static int peridot_swi_flash_write_block(alt_flash_dev *flash_info, int block_of
 /**
  * Write bytes (erase and program) to flash
  */
-static int peridot_swi_flash_write(alt_flash_dev *flash_info, int offset, const void *src_addr, int length)
+static int peridot_spi_flash_write(alt_flash_dev *flash_info, int offset, const void *src_addr, int length)
 {
   flash_region *region = &flash_info->region_info[0];
   int result;
@@ -466,7 +484,7 @@ static int peridot_swi_flash_write(alt_flash_dev *flash_info, int offset, const 
       page_length = length;
     }
 
-    if (peridot_swi_flash_compare(flash_info, offset, src_addr, page_length) != 0) {
+    if (peridot_spi_flash_compare(flash_info, offset, src_addr, page_length) != 0) {
       result = (*flash_info->erase_block)(flash_info, block_offset);
       if (result < 0) {
         return result;
@@ -487,13 +505,13 @@ static int peridot_swi_flash_write(alt_flash_dev *flash_info, int offset, const 
 }
 
 /**
- * Initialize alt_flash_dev for SPI flash via SWI's EPCS interface
+ * Initialize alt_flash_dev for SPI flash
  */
-void peridot_swi_flash_init(peridot_swi_flash_dev *dev, const char *name)
+void peridot_spi_flash_init(peridot_spi_flash_dev *dev, const char *name)
 {
   int region_index;
 
-  if (peridot_swi_flash_query(dev) != 0) {
+  if (peridot_spi_flash_query(dev) != 0) {
     // No available SPI flash
     return;
   }
@@ -504,13 +522,13 @@ void peridot_swi_flash_init(peridot_swi_flash_dev *dev, const char *name)
   }
 
   dev->dev.name  = name;
-  dev->dev.write = peridot_swi_flash_write;
-  dev->dev.read  = peridot_swi_flash_read;
-  dev->dev.get_info = peridot_swi_flash_get_info;
-  dev->dev.erase_block = peridot_swi_flash_erase_block;
-  dev->dev.write_block = peridot_swi_flash_write_block;
+  dev->dev.write = peridot_spi_flash_write;
+  dev->dev.read  = peridot_spi_flash_read;
+  dev->dev.get_info = peridot_spi_flash_get_info;
+  dev->dev.erase_block = peridot_spi_flash_erase_block;
+  dev->dev.write_block = peridot_spi_flash_write_block;
 
   alt_flash_device_register(&dev->dev);
 }
 
-#endif  /* SWI_ENABLE_FEATURE_FLASH */
+#endif  /* PERIDOT_SPI_FLASH_ENABLE */
