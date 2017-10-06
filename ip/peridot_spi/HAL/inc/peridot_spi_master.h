@@ -6,9 +6,7 @@
 # include <tthread.h>
 #endif
 #include "system.h"
-#ifdef PERIDOT_SPI_FLASH_ENABLE
-# include "sys/alt_flash_dev.h"
-#endif
+#include "peridot_spi_flash.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -46,52 +44,31 @@ typedef struct peridot_spi_master_pfc_map_s {
 peridot_spi_master_pfc_map;
 #endif  /* __PERIDOT_PFC_INTERFACE */
 
-#ifdef PERIDOT_SPI_FLASH_ENABLE
-typedef struct peridot_spi_flash_dev_s
-{
-  alt_flash_dev dev;
-  alt_u8 erase_inst;
-  alt_u8 four_bytes_mode;
-  alt_u16 page_size;
-}
-peridot_spi_flash_dev;
-
-# define PERIDOT_SPI_MASTER_FLASH_STATE_INSTANCE(name, state) \
-  peridot_spi_flash_dev state##_flash
-#else   /* !PERIDOT_SPI_FLASH_ENABLE */
-# define PERIDOT_SPI_MASTER_FLASH_STATE_INSTANCE(name, state)
-#endif  /* !PERIDOT_SPI_FLASH_ENABLE */
-
 #define PERIDOT_SPI_MASTER_STATE_INSTANCE(name, state) \
-  peridot_spi_master_state state =      \
-  {                                     \
-    #name,                              \
-    name##_BASE,                        \
-    name##_FREQ,                        \
-    name##_IRQ_INTERRUPT_CONTROLLER_ID, \
-    name##_IRQ,                         \
-  };                                    \
-  PERIDOT_SPI_MASTER_FLASH_STATE_INSTANCE(name, state)
+  peridot_spi_master_state state =            \
+  {                                           \
+    #name,                                    \
+    name##_BASE,                              \
+    name##_FREQ,                              \
+    name##_IRQ_INTERRUPT_CONTROLLER_ID,       \
+    name##_IRQ,                               \
+  }                                           \
+  PERIDOT_SPI_FLASH_INSTANCE(name, state)     \
+  PERIDOT_SPI_FLASH_BOOT_INSTANCE(name, state)
+  
+extern void peridot_spi_master_init(peridot_spi_master_state *state
+                                    PERIDOT_SPI_FLASH_INIT_ARGS);
 
-#ifdef PERIDOT_SPI_FLASH_ENABLE
-extern void peridot_spi_master_init(peridot_spi_master_state *state, peridot_spi_flash_dev *flash_dev, const char *flash_name);
-  # define PERIDOT_SPI_MASTER_STATE_INIT(name, state) \
-  peridot_spi_master_init(&state, &state##_flash, name##_NAME "_flash")
-#else   /* !PERIDOT_SPI_FLASH_ENABLE */
-extern void peridot_spi_master_init(peridot_spi_master_state *state);
-# define PERIDOT_SPI_MASTER_STATE_INIT(name, state) \
-  peridot_spi_master_init(&state)
-#endif  /* !PERIDOT_SPI_FLASH_ENABLE */
+#define PERIDOT_SPI_MASTER_STATE_INIT(name, state)  \
+  peridot_spi_master_init(                          \
+    &state                                          \
+    PERIDOT_SPI_FLASH_INIT_PASS(name, state)        \
+  )
 
 #ifdef __PERIDOT_PFC_INTERFACE
 extern int peridot_spi_master_configure_pins(const peridot_spi_master_pfc_map *map,
                                              alt_u32 sclk, alt_32 mosi, alt_32 miso, int dry_run);
 #endif  /* __PERIDOT_PFC_INTERFACE */
-
-#ifdef PERIDOT_SPI_FLASH_ENABLE
-extern int peridot_spi_flash_command(alt_u32 write_length, const alt_u8 *write_data,
-                                     alt_u32 read_length, alt_u8 *read_data, alt_u32 flags);
-#endif  /* PERIDOT_SPI_FLASH_ENABLE */
 
 extern int peridot_spi_master_get_clkdiv(peridot_spi_master_state *sp, alt_u32 bitrate, alt_u32 *clkdiv);
 

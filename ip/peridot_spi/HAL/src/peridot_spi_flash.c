@@ -1,12 +1,19 @@
-#include "peridot_spi_master.h"
+#include "system.h"
+
+#if defined(PERIDOT_SPI_FLASH_ENABLE) && defined(PERIDOT_SWI_FLASH_ENABLE)
+# error "SPI flash feature cannot be enabled to both of peridot_swi and peridot_spi"
+#endif
+#ifdef PERIDOT_SPI_FLASH_ENABLE
+# include "peridot_spi_master.h"
+#endif
+#ifdef PERIDOT_SWI_FLASH_ENABLE
+# include "peridot_swi.h"
+#endif
 #include <errno.h>
 #include <string.h>
 #include <limits.h>
 
-#ifdef PERIDOT_SPI_FLASH_ENABLE
-
-#define COMBINE1(x,y) COMBINE2(x,y)
-#define COMBINE2(x,y) x##y
+#if defined(PERIDOT_SPI_FLASH_ENABLE) || defined(PERIDOT_SWI_FLASH_ENABLE)
 
 enum {
   CMD_PAGE_PROGRAM = 0x02,
@@ -40,13 +47,29 @@ static int div_power2(int numerator, unsigned int denominator)
 int peridot_spi_flash_command(alt_u32 write_length, const alt_u8 *write_data,
                               alt_u32 read_length, alt_u8 *read_data, alt_u32 flags)
 {
+#ifdef PERIDOT_SPI_FLASH_ENABLE
+# define TO_STR(x) _TO_STR(x)
+# define _TO_STR(x) #x
+  /* This is a workaround to avoid using %gprel for instance */
+  peridot_spi_master_state *instance;
+  __asm__(
+    "movui %0, %%lo(" TO_STR(PERIDOT_SPI_MASTER_DRIVER_FLASH_INSTANCE) "\n"
+    "orhi  %0, %0, %%hi(" TO_STR(PERIDOT_SPI_MASTER_DRIVER_FLASH_INSTANCE) "\n"
+  : "=r"(instance));
   return peridot_spi_master_transfer(
-    COMBINE1(PERIDOT_SPI_MASTER_DRIVER_INSTANCE, _DRIVER_INSTANCE),
+    instance,
     PERIDOT_SPI_FLASH_SLAVE_NUMBER,
-    COMBINE1(PERIDOT_SPI_MASTER_DRIVER_INSTANCE, _FLASH_CLKDIV),
+    PERIDOT_SPI_MASTER_DRIVER_FLASH_CLKDIV,
     write_length, write_data,
-    write_length, read_length, read_data, flags
+    write_length, read_length, read_data,
+    (flags & PERIDOT_SPI_FLASH_MERGE) ? PERIDOT_SPI_MASTER_MERGE : 0
   );
+#else
+  return peridot_swi_flash_command(
+    write_length, write_data, read_length, read_data,
+    (flags & PERIDOT_SPI_FLASH_MERGE) ? PERIDOT_SWI_FLASH_MERGE : 0
+  );
+#endif
 }
 
 /**
@@ -439,7 +462,7 @@ static int peridot_spi_flash_write_block(alt_flash_dev *flash_info, int block_of
     cmd[0] = CMD_PAGE_PROGRAM;
     result = peridot_spi_flash_command(
         peridot_spi_flash_set_addr(flash, cmd + 1, data_offset) + 1,
-        cmd, 0, NULL, PERIDOT_SPI_MASTER_MERGE);
+        cmd, 0, NULL, PERIDOT_SPI_FLASH_MERGE);
     if (result < 0) {
       return result;
     }
@@ -531,4 +554,4 @@ void peridot_spi_flash_init(peridot_spi_flash_dev *dev, const char *name)
   alt_flash_device_register(&dev->dev);
 }
 
-#endif  /* PERIDOT_SPI_FLASH_ENABLE */
+#endif  /* PERIDOT_SPI_FLASH_ENABLE || PERIDOT_SWI_FLASH_ENABLE */

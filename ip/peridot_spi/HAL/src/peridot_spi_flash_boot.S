@@ -1,12 +1,29 @@
 #include "system.h"
+#if defined(PERIDOT_SPI_FLASH_BOOT_ENABLE) || defined(PERIDOT_SWI_FLASH_BOOT_ENABLE)
+
+#if defined(PERIDOT_SPI_FLASH_BOOT_ENABLE) && defined(PERIDOT_SWI_FLASH_BOOT_ENABLE)
+# error "SPI flash boot feature cannot be enabled to both of peridot_swi and peridot_spi"
+#endif
+
 #ifdef PERIDOT_SPI_FLASH_BOOT_ENABLE
-#include "peridot_spi_regs.h"
+# include "peridot_spi_regs.h"
+# define REG_STA_MSK		PERIDOT_SPI_ACCESS_STA_MSK
+# define REG_RDY_MSK		PERIDOT_SPI_ACCESS_RDY_MSK
+# define REG_SS_MSK			PERIDOT_SPI_ACCESS_SS_MSK
+# define REG_TXDATA_MSK		PERIDOT_SPI_ACCESS_TXDATA_MSK
+# define REG_RXDATA_MSK		PERIDOT_SPI_ACCESS_RXDATA_MSK
+#else  /* !PERIDOT_SPI_FLASH_BOOT_ENABLE */
+# include "peridot_swi_regs.h"
+# define REG_STA_MSK		PERIDOT_SWI_FLASH_STA_MSK
+# define REG_RDY_MSK		PERIDOT_SWI_FLASH_RDY_MSK
+# define REG_SS_MSK			PERIDOT_SWI_FLASH_SS_MSK
+# define REG_TXDATA_MSK		PERIDOT_SWI_FLASH_TXDATA_MSK
+# define REG_RXDATA_MSK		PERIDOT_SWI_FLASH_RXDATA_MSK
+#endif /* !PERIDOT_SPI_FLASH_BOOT_ENABLE */
+
 #ifdef ALT_ALLOW_CODE_AT_RESET
 # error "You have to turn off hal.linker.allow_code_at_reset to use SPI flash boot"
-#else   /* ALT_ALLOW_CODE_AT_RESET */
-
-#define COMBINE1(x,y) COMBINE2(x,y)
-#define COMBINE2(x,y) x##y
+#endif /* ALT_ALLOW_CODE_AT_RESET */
 
 /*----------------------------------------------------------------
  * Register usage map
@@ -88,7 +105,7 @@
  * Open flash connection (Start CS# output)
  */
 .macro FLASH_OPEN
-	MOVI32	r_temp, PERIDOT_SPI_ACCESS_SS_MSK
+	MOVI32	r_temp, REG_STA_MSK
 	stwio	r_temp, 0(r_spim_base)
 .endm
 
@@ -97,10 +114,10 @@
  */
 .macro FLASH_TX rTX
 99:	ldwio	r_temp, 0(r_spim_base)
-	andi	r_temp, r_temp, PERIDOT_SPI_ACCESS_RDY_MSK
+	andi	r_temp, r_temp, REG_RDY_MSK
 	beq		r_temp, r_zero, 99b
-	andi	r_temp, \rTX, PERIDOT_SPI_ACCESS_TXDATA_MSK
-	ori		r_temp, r_temp, PERIDOT_SPI_ACCESS_SS_MSK | PERIDOT_SPI_ACCESS_STA_MSK
+	andi	r_temp, \rTX, REG_TXDATA_MSK
+	ori		r_temp, r_temp, REG_STA_MSK | REG_STA_MSK
 	stwio	r_temp, 0(r_spim_base)
 .endm
 
@@ -109,10 +126,10 @@
  */
 .macro FLASH_RX rRX
 99:	ldwio	r_temp, 0(r_spim_base)
-	andi	r_temp, r_temp, PERIDOT_SPI_ACCESS_RDY_MSK
+	andi	r_temp, r_temp, REG_RDY_MSK
 	beq		r_temp, r_zero, 99b
 	ldwio	r_temp, 0(r_spim_base)
-	andi	\rRX, r_temp, PERIDOT_SPI_ACCESS_RXDATA_MSK
+	andi	\rRX, r_temp, REG_RXDATA_MSK
 .endm
 
 /*----------------------------------------------------------------
@@ -143,6 +160,9 @@ __reset_spi_flash:
  * Boot loader
  */
 
+#if defined(PERIDOT_SPI_MASTER_DRIVER_FLASH_BOOT_NO_IPL) || (PERIDOT_SWI_DRIVER_FLASH_BOOT_NO_IPL)
+# error "SPI flash boot feature requires a section named '.ipl'"
+#endif
 	.section .ipl, "xa"
 	.align 2
 
@@ -161,12 +181,21 @@ __loader:
 1:
 #endif
 
+#ifdef PERIDOT_SPI_FLASH_BOOT_ENABLE
+	/* for peridot_spi */
+
 	/* Get register base */
-	MOVI32	r_spim_base, (COMBINE1(PERIDOT_SPI_MASTER_DRIVER_INSTANCE, _BASE) + PERIDOT_SPI_ACCESS_REG * 4)
+	MOVI32	r_spim_base, (PERIDOT_SPI_MASTER_DRIVER_FLASH_BOOT_BASE + PERIDOT_SPI_ACCESS_REG * 4)
 
 	/* Set clock divider */
-	MOVI32	r_temp, COMBINE1(PERIDOT_SPI_MASTER_DRIVER_INSTANCE, _FLASH_CLKDIV)
-	stwio	r_temp, (PERIDOT_SPI_CONFIG_REG * 4)(r_spim_base)
+	MOVI32	r_temp, PERIDOT_SPI_MASTER_DRIVER_FLASH_BOOT_CLKDIV
+	stwio	r_temp, ((PERIDOT_SPI_CONFIG_REG - PERIDOT_SPI_ACCESS_REG) * 4)(r_spim_base)
+#else   /* !PERIDOT_SPI_FLASH_BOOT_ENABLE */
+	/* for peridot_swi */
+
+	/* Get register base */
+	MOVI32	r_spim_base, (PERIDOT_SWI_DRIVER_FLASH_BOOT_BASE + PERIDOT_SWI_FLASH_REG * 4)
+#endif  /* !PERIDOT_SPI_FLASH_BOOT_ENABLE */
 
 	/* Calculate function pointers */
 	nextpc	r_temp
@@ -198,7 +227,7 @@ __loader:
 	MOVI32	r_elf_magic, ELF_HEADER_LE
 	bne		r_spim_read, r_elf_magic, halt
 
-#else	/* PERIDOT_SPI_FLASH_BOOT_AFTER_CFG */
+#else   /* PERIDOT_SPI_FLASH_BOOT_AFTER_CFG */
 
 	/*
 	 * ELF image is located just after FPGA configuration data
@@ -262,7 +291,7 @@ __loader:
 	RCALL	flash_close
 	bne		r_spim_read, r_elf_magic, halt
 1:
-#endif	/* PERIDOT_SPI_FLASH_BOOT_AFTER_CFG */
+#endif  /* PERIDOT_SPI_FLASH_BOOT_AFTER_CFG */
 
 	/* Check e_type and e_machine */
 	addi	r_spim_write, r_elf_base, 16	/* offsetof(Elf32_ehdr, e_type) */
@@ -308,7 +337,7 @@ load_program_header:
 #if defined(PERIDOT_SPI_FLASH_BOOT_DECOMPRESS_LZ4)
 	MOVI32	r_temp, PT_LOAD_LZ4
 	beq		r_temp, r_p_type, decompress_lz4
-#endif	/* PERIDOT_SPI_FLASH_BOOT_DECOMPRESS_LZ4 */
+#endif  /* PERIDOT_SPI_FLASH_BOOT_DECOMPRESS_LZ4 */
 	MOVI32	r_temp, PT_LOAD
 	bne		r_temp, r_p_type, next_program_header
 
@@ -403,7 +432,7 @@ decompress_lz4:
 	addi	r_p_paddr, r_p_paddr, 1
 	bltu	r_lz4_window, r_lz4_match, 8b
 	br		1b
-#endif	/* PERIDOT_SPI_FLASH_BOOT_DECOMPRESS_LZ4 */
+#endif  /* PERIDOT_SPI_FLASH_BOOT_DECOMPRESS_LZ4 */
 
 halt:
 	RCALL	flash_close
@@ -414,7 +443,7 @@ halt:
  */
 flash_close:
 1:	ldwio	r_temp, 0(r_spim_base)
-	andi	r_temp, r_temp, PERIDOT_SPI_ACCESS_RDY_MSK
+	andi	r_temp, r_temp, REG_RDY_MSK
 	beq		r_temp, r_zero, 1b
 	stwio	r_zero, 0(r_spim_base)
 	ret
@@ -474,5 +503,4 @@ extract_bit5s:
 
 	.long	_alt_partition_ipl_start
 
-#endif  /* !ALT_ALLOW_CODE_AT_RESET */
-#endif  /* PERIDOT_SPI_FLASH_BOOT_ENABLE */
+#endif  /* PERIDOT_SPI_FLASH_BOOT_ENABLE || PERIDOT_SWI_FLASH_BOOT_ENABLE */

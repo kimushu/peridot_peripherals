@@ -24,11 +24,8 @@ static void peridot_spi_master_irq(void *context, alt_u32 id)
 #endif
 }
 
-#ifdef PERIDOT_SPI_FLASH_ENABLE
-void peridot_spi_master_init(peridot_spi_master_state *sp, peridot_spi_flash_dev *flash_dev, const char *flash_name)
-#else
-void peridot_spi_master_init(peridot_spi_master_state *sp)
-#endif
+void peridot_spi_master_init(peridot_spi_master_state *sp
+                             PERIDOT_SPI_FLASH_INIT_ARGS)
 {
 #ifdef __tinythreads__
   pthread_mutex_init(&sp->lock, NULL);
@@ -45,12 +42,7 @@ void peridot_spi_master_init(peridot_spi_master_state *sp)
   alt_irq_register(sp->irq, sp, peridot_spi_master_irq);
 #endif
 
-#ifdef PERIDOT_SPI_FLASH_ENABLE
-  if (flash_dev) {
-    extern void peridot_spi_flash_init(peridot_spi_flash_dev *dev, const char *name);
-    peridot_spi_flash_init(flash_dev, flash_name);
-  }
-#endif
+  PERIDOT_SPI_FLASH_INIT_CALL();
 }
 
 #ifdef __PERIDOT_PFC_INTERFACE
