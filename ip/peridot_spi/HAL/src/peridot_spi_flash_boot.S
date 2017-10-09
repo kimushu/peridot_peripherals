@@ -102,11 +102,9 @@
 .endm
 
 /*
- * Open flash connection (Start CS# output)
+ * Open flash connection
  */
 .macro FLASH_OPEN
-	MOVI32	r_temp, REG_STA_MSK
-	stwio	r_temp, 0(r_spim_base)
 .endm
 
 /*
@@ -117,7 +115,7 @@
 	andi	r_temp, r_temp, REG_RDY_MSK
 	beq		r_temp, r_zero, 99b
 	andi	r_temp, \rTX, REG_TXDATA_MSK
-	ori		r_temp, r_temp, REG_STA_MSK | REG_STA_MSK
+	ori		r_temp, r_temp, REG_STA_MSK | REG_SS_MSK
 	stwio	r_temp, 0(r_spim_base)
 .endm
 
