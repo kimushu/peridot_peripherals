@@ -140,7 +140,7 @@ static int transfer(peridot_spi_master_state *sp,
   }
 
 #ifdef __PERIDOT_PFC_INTERFACE
-  if (slave >= 0)
+  if ((slave >= 0) && (sp->ss_n_pfc_map))
   {
     /* Connect ss_n output to the slave */
     peridot_pfc_interface_select_output(slave, sp->ss_n_pfc_map->out_funcs[slave]);
@@ -246,10 +246,13 @@ int peridot_spi_master_transfer(peridot_spi_master_state *sp,
   int result;
 
 #ifdef __PERIDOT_PFC_INTERFACE
-  if ((slave >= sizeof(sp->ss_n_pfc_map->out_funcs)) ||
-      ((slave >= 0) && (sp->ss_n_pfc_map->out_funcs[slave] < 0)))
+  if (sp->ss_n_pfc_map)
   {
-    return -EINVAL;
+    if ((slave >= sizeof(sp->ss_n_pfc_map->out_funcs)) ||
+        ((slave >= 0) && (sp->ss_n_pfc_map->out_funcs[slave] < 0)))
+    {
+      return -EINVAL;
+    }
   }
 #endif  /* __PERIDOT_PFC_INTERFACE */
 
