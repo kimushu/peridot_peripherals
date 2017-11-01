@@ -7,7 +7,7 @@ create_driver peridot_spi_master_driver
 
 set_sw_property hw_class_name peridot_spi_master
 set_sw_property min_compatible_hw_version 1.0
-set_sw_property version 1.1
+set_sw_property version 1.2
 
 set_sw_property auto_initialize true
 set_sw_property bsp_subdirectory drivers
@@ -26,6 +26,7 @@ add_sw_property include_source HAL/inc/peridot_spi_flash.h
 add_sw_property include_source tools/flash_boot_gen.tcl
 add_sw_property include_source tools/elf.tcl
 add_sw_property include_source tools/lz4hc.tcl
+add_sw_property include_source tools/lz4tcl.dll
 
 # Supported BSP types
 add_sw_property supported_bsp_type HAL

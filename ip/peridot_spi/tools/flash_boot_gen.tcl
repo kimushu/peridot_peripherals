@@ -22,7 +22,9 @@ set cmp $opts(--compress)
 #
 set libdir [ file dirname $::argv0 ]
 if { $cmp == "LZ4" } {
-	source [ file join $libdir lz4hc.tcl ]
+	if { [ catch { load [ file join $libdir lz4tcl ] } ] } {
+		source [ file join $libdir lz4hc.tcl ]
+	}
 }
 source [ file join $libdir elf.tcl ]
 
